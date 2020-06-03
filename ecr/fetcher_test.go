@@ -121,8 +121,10 @@ func TestFetchManifest(t *testing.T) {
 	// test all supported media types
 	for _, mediaType := range []string{
 		ocispec.MediaTypeImageManifest,
+		ocispec.MediaTypeImageIndex,
 		images.MediaTypeDockerSchema2Manifest,
 		images.MediaTypeDockerSchema1Manifest,
+		images.MediaTypeDockerSchema2ManifestList,
 	} {
 		t.Run(mediaType, func(t *testing.T) {
 			callCount := 0
