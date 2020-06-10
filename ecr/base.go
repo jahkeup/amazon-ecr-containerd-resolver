@@ -23,10 +23,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/ecr"
-	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/reference"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 var (
@@ -38,7 +36,8 @@ type ecrBase struct {
 	ecrSpec ECRSpec
 }
 
-// ecrAPI contains only the ECR APIs that are called by the resolver
+// ecrAPI contains only the ECR APIs that are called by the resolver.
+//
 // See https://docs.aws.amazon.com/sdk-for-go/api/service/ecr/ecriface/ for the
 // full interface from the SDK.
 type ecrAPI interface {
@@ -53,17 +52,14 @@ type ecrAPI interface {
 
 func (b *ecrBase) getManifest(ctx context.Context) (*ecr.Image, error) {
 	imageIdentifier := b.ecrSpec.ImageID()
-	log.G(ctx).WithField("imageIdentifier", imageIdentifier).Debug("ecr.base.manifest")
+	log.G(ctx).WithField("imageIdentifier", imageIdentifier).Debug("ecr.base.manifest: getting image")
+
 	batchGetImageInput := &ecr.BatchGetImageInput{
 		RegistryId:     aws.String(b.ecrSpec.Registry()),
 		RepositoryName: aws.String(b.ecrSpec.Repository),
 		ImageIds:       []*ecr.ImageIdentifier{imageIdentifier},
-		// TODO: Determine if this should be hard-coded
-		AcceptedMediaTypes: []*string{
-			aws.String(ocispec.MediaTypeImageManifest),
-			aws.String(images.MediaTypeDockerSchema2Manifest),
-		},
 	}
+	log.G(ctx).WithField("batchGetImageInput", batchGetImageInput).Trace("ecr.base.manifest")
 
 	batchGetImageOutput, err := b.client.BatchGetImageWithContext(ctx, batchGetImageInput)
 	if err != nil {
@@ -71,7 +67,7 @@ func (b *ecrBase) getManifest(ctx context.Context) (*ecr.Image, error) {
 		fmt.Println(err)
 		return nil, err
 	}
-	log.G(ctx).WithField("batchGetImage", batchGetImageOutput).Debug("ecr.base.manifest")
+	log.G(ctx).WithField("batchGetImageOutput", batchGetImageOutput).Trace("ecr.base.manifest")
 
 	var ecrImage *ecr.Image
 	if len(batchGetImageOutput.Images) == 0 {
