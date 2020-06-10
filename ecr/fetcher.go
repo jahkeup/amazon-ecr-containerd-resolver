@@ -77,7 +77,7 @@ func (f *ecrFetcher) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.Rea
 }
 
 func (f *ecrFetcher) fetchManifest(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
-	image, err := f.getManifest(ctx)
+	image, err := f.getImage(ctx)
 	if err != nil {
 		return nil, err
 	}
