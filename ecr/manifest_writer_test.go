@@ -78,3 +78,7 @@ func TestManifestWriterCommit(t *testing.T) {
 	assert.NoError(t, err, "failed to commit")
 	assert.Equal(t, 1, callCount, "PutImage should be called once")
 }
+
+func TestManifestWriterNoTagCommit(t *testing.T) {
+	// TODO: add test
+}
