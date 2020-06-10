@@ -53,14 +53,26 @@ type ecrAPI interface {
 
 // getImageByDescriptor retrieves an image from ECR for a given OCI descriptor.
 func (b *ecrBase) getImageByDescriptor(ctx context.Context, desc ocispec.Descriptor) (*ecr.Image, error) {
-	input := ecr.BatchGetImageInput{
-		ImageIds: []*ecr.ImageIdentifier{
-			&ecr.ImageIdentifier{ImageDigest: aws.String(desc.Digest.String())},
-		},
+	// Only valid descriptors will be queried for.
+	if err := desc.Digest.Validate(); err != nil {
+		return nil, err
 	}
+
+	ident := &ecr.ImageIdentifier{ImageDigest: aws.String(desc.Digest.String())}
+	// Use stronger query when digest matches the reference.
+	if b.ecrSpec.Spec().Digest() == desc.Digest {
+		if tag, _ := b.ecrSpec.TagDigest(); tag != "" {
+			ident.ImageTag = aws.String(tag)
+		}
+	}
+
+	input := ecr.BatchGetImageInput{
+		ImageIds: []*ecr.ImageIdentifier{ident},
+	}
+
+	// Include mediaType when the descriptor provides it.
 	if desc.MediaType != "" {
 		input.AcceptedMediaTypes = []*string{aws.String(desc.MediaType)}
-
 	}
 
 	imgs, err := b.runGetImage(ctx, input)
@@ -70,6 +82,7 @@ func (b *ecrBase) getImageByDescriptor(ctx context.Context, desc ocispec.Descrip
 	return imgs[0], nil
 }
 
+// getImage fetches the reference's image from ECR.
 func (b *ecrBase) getImage(ctx context.Context) (*ecr.Image, error) {
 	imgs, err := b.runGetImage(ctx, ecr.BatchGetImageInput{
 		ImageIds: []*ecr.ImageIdentifier{b.ecrSpec.ImageID()},

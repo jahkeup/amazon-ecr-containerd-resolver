@@ -39,7 +39,7 @@ func TestPushManifestReturnsManifestWriter(t *testing.T) {
 	registry := "registry"
 	repository := "repository"
 	imageTag := "tag"
-	imageDigest := "digest"
+	imageDigest := "sha256:e6d9755ef94b6ea25bbf53beec11dc9f7cffd51bf8ccb37919af645f9100254c" // arbitrary
 	fakeClient := &fakeECRClient{}
 	pusher := &ecrPusher{
 		ecrBase: ecrBase{
@@ -65,26 +65,47 @@ func TestPushManifestReturnsManifestWriter(t *testing.T) {
 	} {
 		t.Run(mediaType, func(t *testing.T) {
 			callCount := 0
+			desc := ocispec.Descriptor{
+				MediaType: mediaType,
+				Digest:    digest.Digest(imageDigest),
+			}
+
+			// Service mock
+
 			fakeClient.BatchGetImageFn = func(_ aws.Context, input *ecr.BatchGetImageInput, _ ...request.Option) (*ecr.BatchGetImageOutput, error) {
 				callCount++
+
 				assert.Equal(t, registry, aws.StringValue(input.RegistryId))
 				assert.Equal(t, repository, aws.StringValue(input.RepositoryName))
-				assert.Equal(t, []*ecr.ImageIdentifier{{ImageTag: aws.String(imageTag)}}, input.ImageIds)
+
+				// Check the queried image selectors.
+				if assert.Equal(t, 1, len(input.ImageIds)) {
+					var expectedImageID ecr.ImageIdentifier
+					// It should either have the exact descriptor digest OR a
+					// tag to resolve.
+					if input.ImageIds[0].ImageDigest == nil {
+						expectedImageID.ImageTag = aws.String(imageTag)
+					} else {
+						expectedImageID.ImageDigest = aws.String(imageDigest)
+						assert.NotEmpty(t, input.AcceptedMediaTypes, "should have a media type when using digest query")
+					}
+					assert.Equal(t, []*ecr.ImageIdentifier{&expectedImageID}, input.ImageIds)
+				}
+				assert.Equal(t, []*string{aws.String(desc.MediaType)}, input.AcceptedMediaTypes)
+
 				return &ecr.BatchGetImageOutput{
 					Failures: []*ecr.ImageFailure{
 						{FailureCode: aws.String(ecr.ImageFailureCodeImageNotFound)},
 					},
 				}, nil
 			}
-			desc := ocispec.Descriptor{
-				MediaType: mediaType,
-				Digest:    digest.Digest(imageDigest),
-			}
+
+			// Run mocked push
 
 			start := time.Now()
 			writer, err := pusher.Push(context.Background(), desc)
 			assert.Equal(t, 1, callCount, "BatchGetImage should be called once")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			_, ok := writer.(*manifestWriter)
 			assert.True(t, ok, "writer should be a manifestWriter")
 			end := time.Now()
@@ -106,7 +127,7 @@ func TestPushManifestAlreadyExists(t *testing.T) {
 	registry := "registry"
 	repository := "repository"
 	imageTag := "tag"
-	imageDigest := "digest"
+	imageDigest := "sha256:887d98c094a276d3dc23bb64a92e8a49c359a8a38596bc1067e565ac0d027685" // arbitrary
 	fakeClient := &fakeECRClient{
 		BatchGetImageFn: func(aws.Context, *ecr.BatchGetImageInput, ...request.Option) (*ecr.BatchGetImageOutput, error) {
 			return &ecr.BatchGetImageOutput{
