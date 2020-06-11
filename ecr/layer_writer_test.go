@@ -28,6 +28,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLayerWriter(t *testing.T) {
@@ -89,17 +90,17 @@ func TestLayerWriter(t *testing.T) {
 	tracker.SetStatus(refKey, docker.Status{})
 
 	lw, err := newLayerWriter(ecrBase, tracker, "refKey", desc)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, initiateLayerUploadCount)
 	assert.Equal(t, 0, uploadLayerPartCount)
 	assert.Equal(t, 0, completeLayerUploadCount)
 
 	n, err := lw.Write([]byte(layerData))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, len(layerData), n)
 
 	err = lw.Commit(context.Background(), int64(len(layerData)), desc.Digest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, completeLayerUploadCount)
 }
 
@@ -142,6 +143,6 @@ func TestLayerWriterCommitExists(t *testing.T) {
 	}
 
 	err := lw.Commit(context.Background(), 0, digest.Digest(layerDigest))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, callCount)
 }
