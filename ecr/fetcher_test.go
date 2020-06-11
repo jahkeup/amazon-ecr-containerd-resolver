@@ -30,6 +30,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/ecr"
+	"github.com/awslabs/amazon-ecr-containerd-resolver/ecr/internal/testdata"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
 	"github.com/opencontainers/go-digest"
@@ -218,7 +219,7 @@ func TestFetchManifestNotFound(t *testing.T) {
 func TestFetchLayer(t *testing.T) {
 	registry := "registry"
 	repository := "repository"
-	layerDigest := "digest"
+	layerDigest := testdata.LayerDigest.String()
 	fakeClient := &fakeECRClient{}
 	fetcher := &ecrFetcher{
 		ecrBase: ecrBase{
@@ -291,7 +292,7 @@ func TestFetchLayerAPIError(t *testing.T) {
 func TestFetchLayerHtcat(t *testing.T) {
 	registry := "registry"
 	repository := "repository"
-	layerDigest := "digest"
+	layerDigest := testdata.LayerDigest.String()
 	fakeClient := &fakeECRClient{}
 	fetcher := &ecrFetcher{
 		ecrBase: ecrBase{
