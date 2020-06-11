@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"text/tabwriter"
 	"time"
 
@@ -34,6 +35,11 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const (
+	// Default to no debug logging.
+	defaultEnableDebug = 0
+)
+
 func main() {
 	ctx := namespaces.NamespaceFromEnv(context.Background())
 	//logrus.SetLevel(logrus.DebugLevel)
@@ -47,6 +53,12 @@ func main() {
 		local = os.Args[2]
 	} else {
 		local = ref
+	}
+
+	enableDebug := defaultEnableDebug
+	parseEnvInt(ctx, "ECR_PUSH_DEBUG", &enableDebug)
+	if enableDebug == 1 {
+		log.L.Logger.SetLevel(log.TraceLevel)
 	}
 
 	client, err := containerd.New("/run/containerd/containerd.sock")
@@ -128,5 +140,15 @@ func displayUploadProgress(ctx context.Context, ongoing *pushjobs, errs chan err
 		case <-ctx.Done():
 			done = true // allow ui to update once more
 		}
+	}
+}
+
+func parseEnvInt(ctx context.Context, varname string, val *int) {
+	if varval := os.Getenv(varname); varval != "" {
+		parsed, err := strconv.Atoi(varval)
+		if err != nil {
+			log.G(ctx).WithError(err).Fatalf("Failed to parse %s", varname)
+		}
+		*val = parsed
 	}
 }
