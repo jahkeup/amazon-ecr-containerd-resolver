@@ -17,6 +17,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -35,16 +36,21 @@ import (
 )
 
 func main() {
-	ctx := namespaces.NamespaceFromEnv(context.Background())
-	//logrus.SetLevel(logrus.DebugLevel)
+	enableVerbose := flag.Bool("verbose", false, "enable verbose logging")
+	flag.Parse()
+	if *enableVerbose {
+		log.L.Logger.SetLevel(log.TraceLevel)
+	}
 
-	if len(os.Args) < 2 {
+	ctx := namespaces.NamespaceFromEnv(context.Background())
+
+	if len(flag.Args()) < 1 {
 		log.G(ctx).Fatal("Must provide image to push as argument")
 	}
-	ref := os.Args[1]
+	ref := flag.Arg(0)
 	local := ""
-	if len(os.Args) > 2 {
-		local = os.Args[2]
+	if len(flag.Args()) > 2 {
+		local = flag.Arg(1)
 	} else {
 		local = ref
 	}

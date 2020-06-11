@@ -17,6 +17,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 	"strconv"
 
@@ -33,12 +34,19 @@ const (
 )
 
 func main() {
+	enableVerbose := flag.Bool("verbose", false, "enable verbose logging")
+	flag.Parse()
+	if *enableVerbose {
+		log.L.Logger.SetLevel(log.TraceLevel)
+	}
+
 	ctx := namespaces.NamespaceFromEnv(context.Background())
 
-	if len(os.Args) < 2 {
-		log.G(ctx).Fatal("Must provide image to pull as argument")
+	if len(flag.Args()) != 1 {
+		log.G(ctx).Fatal("Must provide image to pull")
 	}
-	ref := os.Args[1]
+
+	ref := flag.Arg(0)
 	parallelism := defaultParallelism
 	if parallelismEnv := os.Getenv("ECR_PULL_PARALLEL"); parallelismEnv != "" {
 		var err error

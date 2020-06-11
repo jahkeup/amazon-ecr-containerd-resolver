@@ -17,7 +17,7 @@ package main
 
 import (
 	"context"
-	"os"
+	"flag"
 
 	"github.com/awslabs/amazon-ecr-containerd-resolver/ecr"
 	"github.com/containerd/containerd"
@@ -26,14 +26,20 @@ import (
 )
 
 func main() {
+	enableVerbose := flag.Bool("verbose", false, "enable verbose logging")
+	flag.Parse()
+	if *enableVerbose {
+		log.L.Logger.SetLevel(log.TraceLevel)
+	}
+
 	ctx := namespaces.NamespaceFromEnv(context.Background())
 
-	if len(os.Args) < 2 {
+	if len(flag.Args()) != 2 {
 		log.G(ctx).Fatal("Must provide source and destination as arguments")
 	}
 
-	sourceRef := os.Args[1]
-	destRef := os.Args[2]
+	sourceRef := flag.Arg(0)
+	destRef := flag.Arg(1)
 
 	client, err := containerd.New("/run/containerd/containerd.sock")
 	if err != nil {
