@@ -77,7 +77,7 @@ func TestParseImageManifestMediaType(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			mediaType := parseImageManifestMediaType(context.TODO(), tc.manifest)
+			mediaType := parseImageManifestMediaType(context.Background(), tc.manifest)
 			assert.Equal(t, tc.mediaType, mediaType)
 		})
 	}
