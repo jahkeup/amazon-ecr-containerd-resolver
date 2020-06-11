@@ -98,7 +98,7 @@ func (b *ecrBase) runGetImage(ctx context.Context, batchGetImageInput ecr.BatchG
 	batchGetImageInput.RegistryId = aws.String(b.ecrSpec.Registry())
 	batchGetImageInput.RepositoryName = aws.String(b.ecrSpec.Repository)
 
-	log.G(ctx).WithField("batchGetImageInput", batchGetImageInput).Trace("ecr.base.image")
+	log.G(ctx).WithField("batchGetImageInput", batchGetImageInput).Trace("ecr.base.image: requesting images")
 
 	batchGetImageOutput, err := b.client.BatchGetImageWithContext(ctx, &batchGetImageInput)
 	if err != nil {
@@ -106,7 +106,7 @@ func (b *ecrBase) runGetImage(ctx context.Context, batchGetImageInput ecr.BatchG
 		fmt.Println(err)
 		return nil, err
 	}
-	log.G(ctx).WithField("batchGetImageOutput", batchGetImageOutput).Trace("ecr.base.image")
+	log.G(ctx).WithField("batchGetImageOutput", batchGetImageOutput).Trace("ecr.base.image: api response")
 
 	for _, failure := range batchGetImageOutput.Failures {
 		switch aws.StringValue(failure.FailureCode) {
