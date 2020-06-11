@@ -108,19 +108,18 @@ func (b *ecrBase) runGetImage(ctx context.Context, batchGetImageInput ecr.BatchG
 	}
 	log.G(ctx).WithField("batchGetImageOutput", batchGetImageOutput).Trace("ecr.base.image")
 
-	if len(batchGetImageOutput.Images) != 1 {
-		for _, failure := range batchGetImageOutput.Failures {
-			switch aws.StringValue(failure.FailureCode) {
-			case ecr.ImageFailureCodeImageTagDoesNotMatchDigest:
-				log.G(ctx).WithField("failure", failure).Debug("ecr.base.image: no matching image with specified digest")
-				return nil, errImageNotFound
-			case ecr.ImageFailureCodeImageNotFound:
-				log.G(ctx).WithField("failure", failure).Debug("ecr.base.image: no image found")
-				return nil, errImageNotFound
-			}
+	for _, failure := range batchGetImageOutput.Failures {
+		switch aws.StringValue(failure.FailureCode) {
+		case ecr.ImageFailureCodeImageTagDoesNotMatchDigest:
+			log.G(ctx).WithField("failure", failure).Debug("ecr.base.image: no matching image with specified digest")
+			return nil, errImageNotFound
+		case ecr.ImageFailureCodeImageNotFound:
+			log.G(ctx).WithField("failure", failure).Debug("ecr.base.image: no image found")
+			return nil, errImageNotFound
+		default:
+			log.G(ctx).WithField("failure", failure).Warn("ecr.base.image: unhandled request failure")
+			return nil, reference.ErrInvalid
 		}
-
-		return nil, reference.ErrInvalid
 	}
 
 	return batchGetImageOutput.Images, nil
