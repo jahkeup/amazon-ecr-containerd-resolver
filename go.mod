@@ -7,7 +7,6 @@ require (
 	github.com/Microsoft/hcsshim v0.8.6 // indirect
 	github.com/aws/aws-sdk-go v1.28.9
 	github.com/containerd/cgroups v0.0.0-20190717030353-c4b9ac5c7601 // indirect
-	github.com/containerd/console v0.0.0-20181022165439-0650fd9eeb50 // indirect
 	github.com/containerd/containerd v1.2.7
 	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
 	github.com/containerd/fifo v0.0.0-20190226154929-a9fb20d87448 // indirect
@@ -15,7 +14,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/docker/distribution v0.0.0-20190205005809-0d3efadf0154 // indirect
 	github.com/docker/go-events v0.0.0-20170721190031-9461782956ad // indirect
-	github.com/docker/go-units v0.4.0
+	github.com/docker/go-units v0.4.0 // indirect
 	github.com/godbus/dbus v4.1.0+incompatible // indirect
 	github.com/gogo/googleapis v1.2.0 // indirect
 	github.com/htcat/htcat v1.0.2
@@ -29,7 +28,7 @@ require (
 	github.com/stretchr/testify v1.2.2
 	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2 // indirect
 	golang.org/x/net v0.0.0-20190607181551-461777fb6f67
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
 	golang.org/x/sys v0.0.0-20190610200419-93c9922d18ae // indirect
 	golang.org/x/text v0.3.2 // indirect
 	google.golang.org/genproto v0.0.0-20190605220351-eb0b1bdb6ae6 // indirect

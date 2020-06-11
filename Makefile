@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-ROOT := $(shell pwd)
+ROOT := $(shell pwd -P)
 
 all: build
 
@@ -47,3 +47,10 @@ test: $(SOURCES)
 clean:
 	@rm $(PULL_BINARY) ||:
 	@rm $(PUSH_BINARY) ||:
+
+# Tidy go modules
+tidy: TIDY=go mod tidy -v
+tidy:
+	$(TIDY)
+	cd example ; \
+	$(TIDY)
