@@ -64,31 +64,47 @@ func TestPushManifestReturnsManifestWriter(t *testing.T) {
 	} {
 		t.Run(mediaType, func(t *testing.T) {
 			callCount := 0
+			desc := ocispec.Descriptor{
+				MediaType: mediaType,
+				Digest:    digest.Digest(imageDigest),
+			}
+
+			// Service mock
+
 			fakeClient.BatchGetImageFn = func(_ aws.Context, input *ecr.BatchGetImageInput, _ ...request.Option) (*ecr.BatchGetImageOutput, error) {
 				callCount++
+
 				assert.Equal(t, registry, aws.StringValue(input.RegistryId))
 				assert.Equal(t, repository, aws.StringValue(input.RepositoryName))
-				assert.Equal(t, []*ecr.ImageIdentifier{{ImageTag: aws.String(imageTag)}}, input.ImageIds)
-				// TODO: Determine if we should be matching the requested media type from containerd
-				assert.ElementsMatch(t, []string{
-					ocispec.MediaTypeImageManifest,
-					images.MediaTypeDockerSchema2Manifest,
-				}, aws.StringValueSlice(input.AcceptedMediaTypes))
+
+				// Check the queried image selectors.
+				if assert.Equal(t, 1, len(input.ImageIds)) {
+					var expectedImageID ecr.ImageIdentifier
+					// It should either have the exact descriptor digest OR a
+					// tag to resolve.
+					if input.ImageIds[0].ImageDigest == nil {
+						expectedImageID.ImageTag = aws.String(imageTag)
+					} else {
+						expectedImageID.ImageDigest = aws.String(imageDigest)
+						assert.NotEmpty(t, input.AcceptedMediaTypes, "should have a media type when using digest query")
+					}
+					assert.ElementsMatch(t, []*ecr.ImageIdentifier{&expectedImageID}, input.ImageIds)
+				}
+				assert.ElementsMatch(t, []string{desc.MediaType}, aws.StringValueSlice(input.AcceptedMediaTypes))
+
 				return &ecr.BatchGetImageOutput{
 					Failures: []*ecr.ImageFailure{
 						{FailureCode: aws.String(ecr.ImageFailureCodeImageNotFound)},
 					},
 				}, nil
 			}
-			desc := ocispec.Descriptor{
-				MediaType: mediaType,
-				Digest:    digest.Digest(imageDigest),
-			}
+
+			// Run mocked push
 
 			start := time.Now()
 			writer, err := pusher.Push(context.Background(), desc)
 			assert.Equal(t, 1, callCount, "BatchGetImage should be called once")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			_, ok := writer.(*manifestWriter)
 			assert.True(t, ok, "writer should be a manifestWriter")
 			end := time.Now()
