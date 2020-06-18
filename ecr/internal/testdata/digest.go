@@ -1,6 +1,20 @@
 package testdata
 
-import "github.com/opencontainers/go-digest"
+import (
+	_ "crypto/sha256"
+	"fmt"
+	"math/rand"
+	"time"
+
+	"github.com/opencontainers/go-digest"
+)
+
+var (
+	// generatorRand is an intentionally deterministic random generator. It is
+	// used for producing pseudo-random data for generating digests suitable for
+	// *testing only*.
+	generatorRand = rand.New(rand.NewSource(1))
+)
 
 const (
 	// InsignificantDigest is an arbitrary digest that should be used by tests utilizing a
@@ -11,3 +25,13 @@ const (
 	// ImageDigest is used for image digests in tests.
 	ImageDigest = InsignificantDigest
 )
+
+// GenerateDigest returns a psuedo-random digest for use as a distinct digest in
+// tests. The produced value does not use a secure random number generator and
+// will give out deterministic values.
+func GenerateDigest() digest.Digest {
+	d := digest.SHA256.Digester()
+	fmt.Fprintf(d.Hash(), "%s", time.Now().UTC().Format(time.RFC3339Nano))
+	fmt.Fprintf(d.Hash(), "%d", generatorRand.Int())
+	return d.Digest()
+}
