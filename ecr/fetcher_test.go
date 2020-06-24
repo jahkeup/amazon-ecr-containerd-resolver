@@ -111,13 +111,7 @@ func TestFetchManifest(t *testing.T) {
 	)
 
 	// Test all supported media types
-	for _, mediaType := range []string{
-		ocispec.MediaTypeImageManifest,
-		ocispec.MediaTypeImageIndex,
-		images.MediaTypeDockerSchema2Manifest,
-		images.MediaTypeDockerSchema1Manifest,
-		images.MediaTypeDockerSchema2ManifestList,
-	} {
+	for _, mediaType := range supportedImageMediaTypes {
 		// Test variants of Object (tag, digest, and combination).
 		for _, testObject := range []struct {
 			ImageIdentifier ecr.ImageIdentifier
