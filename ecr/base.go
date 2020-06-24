@@ -32,6 +32,15 @@ import (
 var (
 	errImageNotFound     = errors.New("ecr: image not found")
 	errGetImageUnhandled = errors.New("ecr: unable to get images")
+
+	// supportedImageMediaTypes lists supported content types for images.
+	supportedImageMediaTypes = []string{
+		images.MediaTypeDockerSchema1Manifest,
+		images.MediaTypeDockerSchema2Manifest,
+		images.MediaTypeDockerSchema2ManifestList,
+		ocispec.MediaTypeImageIndex,
+		ocispec.MediaTypeImageManifest,
+	}
 )
 
 type ecrBase struct {
@@ -55,11 +64,8 @@ type ecrAPI interface {
 // getImage fetches the reference's image from ECR.
 func (b *ecrBase) getImage(ctx context.Context) (*ecr.Image, error) {
 	return b.runGetImage(ctx, ecr.BatchGetImageInput{
-		ImageIds: []*ecr.ImageIdentifier{b.ecrSpec.ImageID()},
-		AcceptedMediaTypes: aws.StringSlice([]string{
-			images.MediaTypeDockerSchema2Manifest,
-			ocispec.MediaTypeImageManifest,
-		}),
+		ImageIds:           []*ecr.ImageIdentifier{b.ecrSpec.ImageID()},
+		AcceptedMediaTypes: aws.StringSlice(supportedImageMediaTypes),
 	})
 }
 
@@ -94,15 +100,13 @@ func (b *ecrBase) getImageByDescriptor(ctx context.Context, desc ocispec.Descrip
 
 	input := ecr.BatchGetImageInput{
 		ImageIds: []*ecr.ImageIdentifier{ident},
-		AcceptedMediaTypes: aws.StringSlice([]string{
-			images.MediaTypeDockerSchema2Manifest,
-			ocispec.MediaTypeImageManifest,
-		}),
 	}
 
-	// Use mediaType from descriptor when provided.
+	// Request exact mediaType when known.
 	if desc.MediaType != "" {
 		input.AcceptedMediaTypes = []*string{aws.String(desc.MediaType)}
+	} else {
+		input.AcceptedMediaTypes = aws.StringSlice(supportedImageMediaTypes)
 	}
 
 	return b.runGetImage(ctx, input)
