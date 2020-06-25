@@ -203,29 +203,49 @@ func (r *ecrResolver) getClient(region string) ecrAPI {
 	return r.clients[region]
 }
 
-type manifestContent struct {
-	SchemaVersion int64         `json:"schemaVersion"`
-	Signatures    []interface{} `json:"signatures,omitempty"`
-	MediaType     string        `json:"mediaType,omitempty"`
+// manifestProbe provides a structure to parse and then probe a given manifest
+// to determine its mediaType.
+type manifestProbe struct {
+	SchemaVersion int64  `json:"schemaVersion"`
+	MediaType     string `json:"mediaType,omitempty"`
+	// Docker Schema 1
+	Signatures json.RawMessage `json:"signatures,omitempty"`
+	// OCI or Docker Manifest Lists
+	Manifests []ocispec.Descriptor `json:"manifests,omitempty"`
 }
 
+// TODO: make this error and handle in caller.
 func parseImageManifestMediaType(ctx context.Context, body string) string {
-	var manifest manifestContent
+	var manifest manifestProbe
 	err := json.Unmarshal([]byte(body), &manifest)
 	if err != nil {
-		log.G(ctx).WithError(err).Warn("ecr.resolver.resolve: could not parse manifest")
-		// default to schema 2 for now
+		log.G(ctx).WithField("manifest", body).
+			WithError(err).Warn("ecr.resolver.resolve: could not parse manifest")
+		// Default to schema 2 for now.
 		return images.MediaTypeDockerSchema2Manifest
 	}
-	if manifest.SchemaVersion == 2 {
-		return manifest.MediaType
-	} else if manifest.SchemaVersion == 1 {
-		if len(manifest.Signatures) == 0 {
-			// unsigned
-			return "application/vnd.docker.distribution.manifest.v1+json"
-		} else {
-			return images.MediaTypeDockerSchema1Manifest
+
+	if manifest.SchemaVersion == 1 {
+		if manifest.MediaType != "" {
+			return manifest.MediaType
 		}
+		if len(manifest.Signatures) == 0 {
+			return "application/vnd.docker.distribution.manifest.v1+json"
+		}
+		return images.MediaTypeDockerSchema1Manifest
+	}
+
+	if manifest.SchemaVersion == 2 {
+		if manifest.MediaType != "" {
+			return manifest.MediaType
+		}
+		// OCI Image Index - matching an empty mediaType and array of manifests.
+		// The mediaType is defined as OPTIONAL in the image-spec, but is
+		// currently required to be provided for ECR.
+		if len(manifest.Manifests) > 0 {
+			return ocispec.MediaTypeImageIndex
+		}
+		return ocispec.MediaTypeImageManifest
 	}
 
 	return ""
