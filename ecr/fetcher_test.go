@@ -46,7 +46,7 @@ func TestFetchUnimplemented(t *testing.T) {
 		MediaType: "never-implemented",
 	}
 	_, err := fetcher.Fetch(context.Background(), desc)
-	assert.EqualError(t, err, unimplemented.Error())
+	assert.EqualError(t, err, errUnimplemented.Error())
 }
 
 func TestFetchForeignLayer(t *testing.T) {

@@ -37,7 +37,7 @@ func TestRefRepresentations(t *testing.T) {
 	}{
 		{
 			ref: "invalid",
-			err: invalidARN,
+			err: errInvalidARN,
 		},
 		{
 			ref: "ecr.aws/arn:nope",
@@ -45,7 +45,7 @@ func TestRefRepresentations(t *testing.T) {
 		},
 		{
 			ref: "arn:aws:ecr:us-west-2:123456789012:repository/foo/bar",
-			err: invalidARN,
+			err: errInvalidARN,
 		},
 		{
 			ref: "ecr.aws/arn:aws:ecr:us-west-2:123456789012:repository/foo/bar",

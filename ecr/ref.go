@@ -35,13 +35,13 @@ const (
 )
 
 var (
-	invalidARN = errors.New("ref: invalid ARN")
+	errInvalidARN      = errors.New("ref: invalid ARN")
+	errInvalidImageURI = errors.New("ecrspec: invalid image URI")
 	// Expecting to match ECR image names of the form:
 	// Example 1: 777777777777.dkr.ecr.us-west-2.amazonaws.com/my_image:latest
 	// Example 2: 777777777777.dkr.ecr.cn-north-1.amazonaws.com.cn/my_image:latest
 	// TODO: Support ECR FIPS endpoints, i.e "ecr-fips" in the URL instead of "ecr"
-	ecrRegex           = regexp.MustCompile(`(^[a-zA-Z0-9][a-zA-Z0-9-_]*)\.dkr\.ecr\.([a-zA-Z0-9][a-zA-Z0-9-_]*)\.amazonaws\.com(\.cn)?.*`)
-	errInvalidImageURI = errors.New("ecrspec: invalid image URI")
+	ecrRegex = regexp.MustCompile(`(^[a-zA-Z0-9][a-zA-Z0-9-_]*)\.dkr\.ecr\.([a-zA-Z0-9][a-zA-Z0-9-_]*)\.amazonaws\.com(\.cn)?.*`)
 )
 
 // ECRSpec represents a parsed reference.
@@ -60,7 +60,7 @@ type ECRSpec struct {
 // ParseRef parses an ECR reference into its constituent parts
 func ParseRef(ref string) (ECRSpec, error) {
 	if !strings.HasPrefix(ref, refPrefix) {
-		return ECRSpec{}, invalidARN
+		return ECRSpec{}, errInvalidARN
 	}
 	stripped := ref[len(refPrefix):]
 	return parseARN(stripped)
@@ -167,7 +167,7 @@ func parseARN(a string) (ECRSpec, error) {
 	// Extract unprefixed repo name contained in the resource part.
 	unprefixedRepo := strings.TrimPrefix(parsed.Resource, repositoryPrefix)
 	if unprefixedRepo == parsed.Resource {
-		return ECRSpec{}, invalidARN
+		return ECRSpec{}, errInvalidARN
 	}
 
 	return ECRSpec{
@@ -175,7 +175,6 @@ func parseARN(a string) (ECRSpec, error) {
 		Repository: unprefixedRepo,
 		Object:     spec.Object,
 	}, nil
-
 }
 
 // Canonical returns the canonical representation for the reference

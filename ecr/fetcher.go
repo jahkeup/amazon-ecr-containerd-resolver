@@ -36,6 +36,8 @@ import (
 	"golang.org/x/net/context/ctxhttp"
 )
 
+var errUnimplemented = errors.New("unimplemented")
+
 // ecrFetcher implements the containerd remotes.Fetcher interface and can be
 // used to pull images from Amazon ECR.
 type ecrFetcher struct {
@@ -73,7 +75,7 @@ func (f *ecrFetcher) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.Rea
 		log.G(ctx).
 			WithField("media type", desc.MediaType).
 			Error("ecr.fetcher: unimplemented media type")
-		return nil, unimplemented
+		return nil, errUnimplemented
 	}
 }
 

@@ -35,8 +35,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-var unimplemented = errors.New("unimplemented")
-
 type ecrResolver struct {
 	session                  *session.Session
 	clients                  map[string]ecrAPI
