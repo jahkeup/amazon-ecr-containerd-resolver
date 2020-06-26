@@ -57,7 +57,7 @@ type ECRSpec struct {
 	arn arn.ARN
 }
 
-// ParseRef parses an ECR reference into its constituent parts
+// ParseRef parses an ECR reference into its constituent parts.
 func ParseRef(ref string) (ECRSpec, error) {
 	if !strings.HasPrefix(ref, refPrefix) {
 		return ECRSpec{}, errInvalidARN
@@ -66,7 +66,8 @@ func ParseRef(ref string) (ECRSpec, error) {
 	return parseARN(stripped)
 }
 
-// ParseImageURI takes an ECR image URI and then constructs and returns an ECRSpec struct
+// ParseImageURI takes an ECR image URI and then constructs and returns an
+// ECRSpec struct.
 func ParseImageURI(input string) (ECRSpec, error) {
 	input = strings.TrimPrefix(input, "https://")
 
@@ -134,17 +135,17 @@ func ParseImageURI(input string) (ECRSpec, error) {
 	}, nil
 }
 
-// Partition returns the AWS partition
+// Partition returns the AWS partition.
 func (spec ECRSpec) Partition() string {
 	return spec.arn.Partition
 }
 
-// Region returns the AWS region
+// Region returns the AWS region.
 func (spec ECRSpec) Region() string {
 	return spec.arn.Region
 }
 
-// Registry returns the Amazon ECR registry
+// Registry returns the Amazon ECR registry.
 func (spec ECRSpec) Registry() string {
 	return spec.arn.AccountID
 }
@@ -152,6 +153,7 @@ func (spec ECRSpec) Registry() string {
 // parseARN parses an ECR ARN into its constituent parts.
 //
 // An example ARN is: arn:aws:ecr:us-west-2:123456789012:repository/foo/bar
+//
 func parseARN(a string) (ECRSpec, error) {
 	parsed, err := arn.Parse(a)
 	if err != nil {
@@ -177,17 +179,17 @@ func parseARN(a string) (ECRSpec, error) {
 	}, nil
 }
 
-// Canonical returns the canonical representation for the reference
+// Canonical returns the canonical representation for the reference.
 func (spec ECRSpec) Canonical() string {
 	return spec.Spec().String()
 }
 
-// ARN returns the canonical representation of the ECR ARN
+// ARN returns the canonical representation of the ECR ARN.
 func (spec ECRSpec) ARN() string {
 	return spec.arn.String()
 }
 
-// Spec returns a reference.Spec
+// Spec returns a populated reference.Spec.
 func (spec ECRSpec) Spec() reference.Spec {
 	return reference.Spec{
 		Locator: refPrefix + spec.ARN(),
@@ -195,7 +197,7 @@ func (spec ECRSpec) Spec() reference.Spec {
 	}
 }
 
-// ImageID returns an ecr.ImageIdentifier suitable for using in calls to ECR
+// ImageID returns an ecr.ImageIdentifier suitable for use in calls to ECR.
 func (spec ECRSpec) ImageID() *ecr.ImageIdentifier {
 	imageID := ecr.ImageIdentifier{}
 	tag, digest := spec.TagDigest()
@@ -208,7 +210,7 @@ func (spec ECRSpec) ImageID() *ecr.ImageIdentifier {
 	return &imageID
 }
 
-// TagDigest returns the tag and/or digest specified by the reference
+// TagDigest returns the tag and/or digest specified by the reference.
 func (spec ECRSpec) TagDigest() (string, digest.Digest) {
 	tag, digest := reference.SplitObject(spec.Object)
 	return strings.TrimSuffix(tag, "@"), digest

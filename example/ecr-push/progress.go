@@ -92,7 +92,7 @@ func (j *pushjobs) status() []StatusInfo {
 	return statuses
 }
 
-// StatusInfo holds the status info for an upload or download
+// StatusInfo holds the status info for an upload or download.
 type StatusInfo struct {
 	Ref       string
 	Status    string
@@ -102,7 +102,7 @@ type StatusInfo struct {
 	UpdatedAt time.Time
 }
 
-// Display pretty prints out the download or upload progress
+// Display pretty prints out the download or upload progress.
 func display(w io.Writer, statuses []StatusInfo, start time.Time) {
 	var total int64
 	for _, status := range statuses {

@@ -183,7 +183,7 @@ func TestImageID(t *testing.T) {
 	}
 }
 
-// Test ParseEcrImageNameToRef with a valid ECR image name
+// Test ParseEcrImageNameToRef with a valid ECR image name.
 func TestParseImageURIValid(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -236,7 +236,7 @@ func TestParseImageURIValid(t *testing.T) {
 	}
 }
 
-// Test ParseEcrImageNameToRef with an invalid ECR image name
+// Test ParseEcrImageNameToRef with an invalid ECR image name.
 func TestParseImageURIInvalid(t *testing.T) {
 	tests := []struct {
 		name      string

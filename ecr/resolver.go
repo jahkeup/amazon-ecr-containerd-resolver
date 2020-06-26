@@ -44,10 +44,10 @@ type ecrResolver struct {
 }
 
 // ResolverOption represents a functional option for configuring the ECR
-// Resolver
+// Resolver.
 type ResolverOption func(*ResolverOptions) error
 
-// ResolverOptions represents available options for configuring the ECR Resolver
+// ResolverOptions represents available options for configuring the ECR Resolver.
 type ResolverOptions struct {
 	// Session is used for configuring the ECR client.  If not specified, a
 	// generic session is used.
@@ -61,7 +61,7 @@ type ResolverOptions struct {
 	LayerDownloadParallelism int
 }
 
-// WithSession is a ResolverOption to use a specific AWS session.Session
+// WithSession is a ResolverOption to use a specific AWS session.Session.
 func WithSession(session *session.Session) ResolverOption {
 	return func(options *ResolverOptions) error {
 		options.Session = session
@@ -69,7 +69,7 @@ func WithSession(session *session.Session) ResolverOption {
 	}
 }
 
-// WithTracker is a ResolverOption to use a specific docker.Tracker
+// WithTracker is a ResolverOption to use a specific docker.Tracker.
 func WithTracker(tracker docker.StatusTracker) ResolverOption {
 	return func(options *ResolverOptions) error {
 		options.Tracker = tracker

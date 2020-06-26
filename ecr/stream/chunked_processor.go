@@ -42,7 +42,7 @@ type chunkedProcessor struct {
 	queueSize    int64
 }
 
-// readCallbackFunc represents a callback function for processing chunks
+// readCallbackFunc represents a callback function for processing chunks.
 type readCallbackFunc func(*Chunk) error
 
 // ChunkedProcessor breaks an io.Reader into smaller parts (Chunks) and invokes
@@ -124,7 +124,6 @@ func (processor *chunkedProcessor) readIntoChunks() {
 			}
 		}
 	}
-
 }
 
 // processChunks selects between the read & error channels provided in the

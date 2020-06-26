@@ -94,7 +94,6 @@ func main() {
 		return client.Push(ctx, ref, desc,
 			containerd.WithResolver(resolver),
 			containerd.WithImageHandler(jobHandler))
-
 	})
 	errs := make(chan error)
 	go func() {
@@ -105,7 +104,6 @@ func main() {
 	err = displayUploadProgress(ctx, ongoing, errs)
 	if err != nil {
 		log.G(ctx).WithError(err).WithField("ref", ref).Fatal("Failed to push")
-
 	}
 	log.G(ctx).WithField("ref", ref).Info("Pushed successfully!")
 }
