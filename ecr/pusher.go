@@ -147,7 +147,7 @@ func (p ecrPusher) checkBlobExistence(ctx context.Context, desc ocispec.Descript
 	return aws.StringValue(layer.LayerAvailability) == ecr.LayerAvailabilityAvailable, nil
 }
 
-func (p ecrPusher) markStatusExists(ctx context.Context, desc ocispec.Descriptor) string {
+func (p ecrPusher) markStatusExists(ctx context.Context, desc ocispec.Descriptor) {
 	ref := remotes.MakeRefKey(ctx, desc)
 	p.tracker.SetStatus(ref, docker.Status{
 		Status: content.Status{
@@ -155,7 +155,6 @@ func (p ecrPusher) markStatusExists(ctx context.Context, desc ocispec.Descriptor
 			UpdatedAt: time.Now(),
 		},
 	})
-	return ref
 }
 
 func (p ecrPusher) markStatusStarted(ctx context.Context, desc ocispec.Descriptor) string {

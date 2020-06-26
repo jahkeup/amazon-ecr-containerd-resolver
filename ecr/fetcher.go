@@ -179,6 +179,7 @@ func (f *ecrFetcher) fetchLayerHtcat(ctx context.Context, desc ocispec.Descripto
 			Error("ecr.fetcher.layer.htcat: failed to parse URL")
 		return nil, err
 	}
+	// TODO: use configurable http.Client, as in doRequest.
 	htc := htcat.New(http.DefaultClient, parsedURL, f.parallelism)
 	pr, pw := io.Pipe()
 	go func() {
@@ -191,5 +192,6 @@ func (f *ecrFetcher) fetchLayerHtcat(ctx context.Context, desc ocispec.Descripto
 				Error("ecr.fetcher.layer.htcat: failed to download layer")
 		}
 	}()
+	log.G(ctx).WithField("desc", desc).Debug("ecr.fetcher.layer.htcat: returning reader")
 	return pr, nil
 }
