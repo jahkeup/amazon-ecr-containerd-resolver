@@ -19,9 +19,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/awslabs/amazon-ecr-containerd-resolver/ecr"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/namespaces"
+
+	"github.com/awslabs/amazon-ecr-containerd-resolver/ecr"
 )
 
 func ExampleNewResolver_pull() {
