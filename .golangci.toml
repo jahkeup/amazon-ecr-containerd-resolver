@@ -1,0 +1,51 @@
+[linters]
+# Enable extends the default list of linters that are enabled at run.
+#
+# For eachs' description, run `golangci-lint linters` or visit the docs:
+#
+# https://golangci-lint.run/usage/linters/
+#
+enable = [
+  "bodyclose",
+  "dogsled",
+  "goconst",
+  "godot",
+  "goimports",
+  "gosec",
+  "interfacer",
+  "maligned",
+  "misspell",
+  "nakedret",
+  "nolintlint",
+  "unconvert",
+  "unparam",
+  "whitespace",
+
+  # TODO: propose using error.Is() in place of '=='.
+  # "goerr113",
+]
+
+[linters-settings.dogsled]
+# permit 2 '_' in calls like:
+#
+# val, _, _, err := callReturningErr()
+max-blank-identifiers = 2
+
+[linters-settings.goimports]
+# Separate the module's imports from its dependencies.
+local-prefixes = "github.com/awslabs/amazon-ecr-containerd-resolver"
+
+[linters-settings.nakedret]
+# do not allow any naked returns
+max-func-lines = 0
+
+[linters-settings.misspell]
+# use consistent spelling of words, correcting organisation to organization.
+locale = "US"
+
+[[issues.exclude-rules]]
+# code uses several string constants that may remain in place.
+path = "example/.*/progress.go"
+linters = [
+  "goconst"
+]
