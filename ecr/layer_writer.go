@@ -120,7 +120,7 @@ func newLayerWriter(base *ecrBase, tracker docker.StatusTracker, ref string, des
 					var status docker.Status
 					status, err = lw.tracker.GetStatus(lw.ref)
 					if err == nil {
-						status.Offset += int64(bytesRead) + 1
+						status.Offset += bytesRead + 1
 						status.UpdatedAt = time.Now()
 						lw.tracker.SetStatus(lw.ref, status)
 					}
