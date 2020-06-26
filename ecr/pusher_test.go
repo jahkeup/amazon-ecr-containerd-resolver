@@ -28,28 +28,25 @@ import (
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
-	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/awslabs/amazon-ecr-containerd-resolver/ecr/internal/testdata"
 )
 
 func TestPushManifestReturnsManifestWriter(t *testing.T) {
-	registry := "registry"
-	repository := "repository"
-	imageTag := "tag"
-	imageDigest := "sha256:e6d9755ef94b6ea25bbf53beec11dc9f7cffd51bf8ccb37919af645f9100254c" // arbitrary
 	fakeClient := &fakeECRClient{}
 	pusher := &ecrPusher{
 		ecrBase: ecrBase{
 			client: fakeClient,
 			ecrSpec: ECRSpec{
 				arn: arn.ARN{
-					AccountID: registry,
+					AccountID: testdata.FakeAccountID,
 				},
-				Repository: repository,
-				Object:     imageTag,
+				Repository: testdata.FakeRepository,
+				Object:     testdata.FakeImageTag,
 			},
 		},
 		tracker: docker.NewInMemoryTracker(),
@@ -61,7 +58,7 @@ func TestPushManifestReturnsManifestWriter(t *testing.T) {
 			callCount := 0
 			desc := ocispec.Descriptor{
 				MediaType: mediaType,
-				Digest:    digest.Digest(imageDigest),
+				Digest:    testdata.ImageDigest,
 			}
 
 			// Service mock
@@ -69,8 +66,8 @@ func TestPushManifestReturnsManifestWriter(t *testing.T) {
 			fakeClient.BatchGetImageFn = func(_ aws.Context, input *ecr.BatchGetImageInput, _ ...request.Option) (*ecr.BatchGetImageOutput, error) {
 				callCount++
 
-				assert.Equal(t, registry, aws.StringValue(input.RegistryId))
-				assert.Equal(t, repository, aws.StringValue(input.RepositoryName))
+				assert.Equal(t, testdata.FakeRegistryID, aws.StringValue(input.RegistryId))
+				assert.Equal(t, testdata.FakeRepository, aws.StringValue(input.RepositoryName))
 
 				// Check the queried image selectors.
 				if assert.Equal(t, 1, len(input.ImageIds)) {
@@ -78,9 +75,9 @@ func TestPushManifestReturnsManifestWriter(t *testing.T) {
 					// It should either have the exact descriptor digest OR a
 					// tag to resolve.
 					if input.ImageIds[0].ImageDigest == nil {
-						expectedImageID.ImageTag = aws.String(imageTag)
+						expectedImageID.ImageTag = aws.String(testdata.FakeImageTag)
 					} else {
-						expectedImageID.ImageDigest = aws.String(imageDigest)
+						expectedImageID.ImageDigest = aws.String(testdata.ImageDigest.String())
 						assert.NotEmpty(t, input.AcceptedMediaTypes, "should have a media type when using digest query")
 					}
 					assert.Equal(t, []*ecr.ImageIdentifier{&expectedImageID}, input.ImageIds)
@@ -118,15 +115,11 @@ func TestPushManifestReturnsManifestWriter(t *testing.T) {
 }
 
 func TestPushManifestAlreadyExists(t *testing.T) {
-	registry := "registry"
-	repository := "repository"
-	imageTag := "tag"
-	imageDigest := "sha256:887d98c094a276d3dc23bb64a92e8a49c359a8a38596bc1067e565ac0d027685" // arbitrary
 	fakeClient := &fakeECRClient{
 		BatchGetImageFn: func(aws.Context, *ecr.BatchGetImageInput, ...request.Option) (*ecr.BatchGetImageOutput, error) {
 			return &ecr.BatchGetImageOutput{
 				Images: []*ecr.Image{
-					{ImageId: &ecr.ImageIdentifier{ImageDigest: aws.String(imageDigest)}},
+					{ImageId: &ecr.ImageIdentifier{ImageDigest: aws.String(testdata.ImageDigest.String())}},
 				},
 			}, nil
 		},
@@ -136,10 +129,10 @@ func TestPushManifestAlreadyExists(t *testing.T) {
 			client: fakeClient,
 			ecrSpec: ECRSpec{
 				arn: arn.ARN{
-					AccountID: registry,
+					AccountID: testdata.FakeRegistryID,
 				},
-				Repository: repository,
-				Object:     imageTag,
+				Repository: testdata.FakeRepository,
+				Object:     testdata.FakeObject,
 			},
 		},
 		tracker: docker.NewInMemoryTracker(),
@@ -147,7 +140,7 @@ func TestPushManifestAlreadyExists(t *testing.T) {
 
 	desc := ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageManifest,
-		Digest:    digest.Digest(imageDigest),
+		Digest:    testdata.ImageDigest,
 	}
 
 	start := time.Now()
@@ -168,9 +161,6 @@ func TestPushManifestAlreadyExists(t *testing.T) {
 }
 
 func TestPushBlobReturnsLayerWriter(t *testing.T) {
-	registry := "registry"
-	repository := "repository"
-	layerDigest := "digest"
 	fakeClient := &fakeECRClient{
 		InitiateLayerUploadFn: func(*ecr.InitiateLayerUploadInput) (*ecr.InitiateLayerUploadOutput, error) {
 			// layerWriter calls this during its constructor
@@ -182,9 +172,9 @@ func TestPushBlobReturnsLayerWriter(t *testing.T) {
 			client: fakeClient,
 			ecrSpec: ECRSpec{
 				arn: arn.ARN{
-					AccountID: registry,
+					AccountID: testdata.FakeAccountID,
 				},
-				Repository: repository,
+				Repository: testdata.FakeRepository,
 			},
 		},
 		tracker: docker.NewInMemoryTracker(),
@@ -203,10 +193,10 @@ func TestPushBlobReturnsLayerWriter(t *testing.T) {
 			callCount := 0
 			fakeClient.BatchCheckLayerAvailabilityFn = func(_ aws.Context, input *ecr.BatchCheckLayerAvailabilityInput, _ ...request.Option) (*ecr.BatchCheckLayerAvailabilityOutput, error) {
 				callCount++
-				assert.Equal(t, registry, aws.StringValue(input.RegistryId))
-				assert.Equal(t, repository, aws.StringValue(input.RepositoryName))
+				assert.Equal(t, testdata.FakeRegistryID, aws.StringValue(input.RegistryId))
+				assert.Equal(t, testdata.FakeRepository, aws.StringValue(input.RepositoryName))
 				require.Len(t, input.LayerDigests, 1)
-				assert.Equal(t, layerDigest, aws.StringValue(input.LayerDigests[0]))
+				assert.Equal(t, testdata.ImageDigest.String(), aws.StringValue(input.LayerDigests[0]))
 				return &ecr.BatchCheckLayerAvailabilityOutput{
 					Layers: []*ecr.Layer{{
 						LayerAvailability: aws.String(ecr.LayerAvailabilityUnavailable),
@@ -216,7 +206,7 @@ func TestPushBlobReturnsLayerWriter(t *testing.T) {
 
 			desc := ocispec.Descriptor{
 				MediaType: ocispec.MediaTypeImageLayerGzip,
-				Digest:    digest.Digest(layerDigest),
+				Digest:    testdata.ImageDigest,
 			}
 
 			start := time.Now()
@@ -241,9 +231,6 @@ func TestPushBlobReturnsLayerWriter(t *testing.T) {
 }
 
 func TestPushBlobAlreadyExists(t *testing.T) {
-	registry := "registry"
-	repository := "repository"
-	layerDigest := "digest"
 	fakeClient := &fakeECRClient{
 		BatchCheckLayerAvailabilityFn: func(aws.Context, *ecr.BatchCheckLayerAvailabilityInput, ...request.Option) (*ecr.BatchCheckLayerAvailabilityOutput, error) {
 			return &ecr.BatchCheckLayerAvailabilityOutput{
@@ -258,9 +245,9 @@ func TestPushBlobAlreadyExists(t *testing.T) {
 			client: fakeClient,
 			ecrSpec: ECRSpec{
 				arn: arn.ARN{
-					AccountID: registry,
+					AccountID: testdata.FakeAccountID,
 				},
-				Repository: repository,
+				Repository: testdata.FakeRepository,
 			},
 		},
 		tracker: docker.NewInMemoryTracker(),
@@ -268,7 +255,7 @@ func TestPushBlobAlreadyExists(t *testing.T) {
 
 	desc := ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageLayerGzip,
-		Digest:    digest.Digest(layerDigest),
+		Digest:    testdata.LayerDigest,
 	}
 
 	start := time.Now()
@@ -289,9 +276,6 @@ func TestPushBlobAlreadyExists(t *testing.T) {
 }
 
 func TestPushBlobAPIError(t *testing.T) {
-	registry := "registry"
-	repository := "repository"
-	layerDigest := "digest"
 	fakeClient := &fakeECRClient{
 		BatchCheckLayerAvailabilityFn: func(aws.Context, *ecr.BatchCheckLayerAvailabilityInput, ...request.Option) (*ecr.BatchCheckLayerAvailabilityOutput, error) {
 			return &ecr.BatchCheckLayerAvailabilityOutput{
@@ -304,9 +288,9 @@ func TestPushBlobAPIError(t *testing.T) {
 			client: fakeClient,
 			ecrSpec: ECRSpec{
 				arn: arn.ARN{
-					AccountID: registry,
+					AccountID: testdata.FakeAccountID,
 				},
-				Repository: repository,
+				Repository: testdata.FakeRepository,
 			},
 		},
 		tracker: docker.NewInMemoryTracker(),
@@ -314,7 +298,7 @@ func TestPushBlobAPIError(t *testing.T) {
 
 	desc := ocispec.Descriptor{
 		MediaType: ocispec.MediaTypeImageLayerGzip,
-		Digest:    digest.Digest(layerDigest),
+		Digest:    testdata.LayerDigest,
 	}
 
 	_, err := pusher.Push(context.Background(), desc)

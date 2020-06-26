@@ -18,9 +18,9 @@ package ecr
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -103,8 +103,6 @@ func TestFetchForeignLayerNotFound(t *testing.T) {
 
 func TestFetchManifest(t *testing.T) {
 	const (
-		registry       = "registry"
-		repository     = "repository"
 		imageManifest  = "image manifest"
 		imageDigest    = "sha256:18019fb68413973fcde9ff917d333bbaa228c4aaebba9ad0ca5ffec26e4f3541"
 		imageTag       = "tag"
@@ -131,9 +129,9 @@ func TestFetchManifest(t *testing.T) {
 					client: fakeClient,
 					ecrSpec: ECRSpec{
 						arn: arn.ARN{
-							AccountID: registry,
+							AccountID: testdata.FakeAccountID,
 						},
-						Repository: repository,
+						Repository: testdata.FakeRepository,
 						Object:     testObject.Object,
 					},
 				},
@@ -143,8 +141,8 @@ func TestFetchManifest(t *testing.T) {
 				callCount := 0
 				fakeClient.BatchGetImageFn = func(_ aws.Context, input *ecr.BatchGetImageInput, _ ...request.Option) (*ecr.BatchGetImageOutput, error) {
 					callCount++
-					assert.Equal(t, registry, aws.StringValue(input.RegistryId))
-					assert.Equal(t, repository, aws.StringValue(input.RepositoryName))
+					assert.Equal(t, testdata.FakeRegistryID, aws.StringValue(input.RegistryId))
+					assert.Equal(t, testdata.FakeRepository, aws.StringValue(input.RepositoryName))
 					assert.Equal(t, []*ecr.ImageIdentifier{&testObject.ImageIdentifier}, input.ImageIds)
 					return &ecr.BatchGetImageOutput{Images: []*ecr.Image{{ImageManifest: aws.String(imageManifest)}}}, nil
 				}
@@ -168,7 +166,6 @@ func TestFetchManifest(t *testing.T) {
 }
 
 func TestFetchManifestAPIError(t *testing.T) {
-	ref := "ecr.aws/arn:aws:ecr:fake:123456789012:repository/foo/bar:latest"
 	mediaType := ocispec.MediaTypeImageManifest
 
 	fakeClient := &fakeECRClient{
@@ -178,17 +175,16 @@ func TestFetchManifestAPIError(t *testing.T) {
 	}
 	resolver := &ecrResolver{
 		clients: map[string]ecrAPI{
-			"fake": fakeClient,
+			testdata.FakeRegion: fakeClient,
 		},
 	}
-	fetcher, err := resolver.Fetcher(context.Background(), ref)
+	fetcher, err := resolver.Fetcher(context.Background(), testdata.FakeRef+"@"+testdata.ImageDigest.String())
 	require.NoError(t, err, "failed to create fetcher")
 	_, err = fetcher.Fetch(context.Background(), ocispec.Descriptor{MediaType: mediaType})
 	assert.EqualError(t, err, "expected")
 }
 
 func TestFetchManifestNotFound(t *testing.T) {
-	ref := "ecr.aws/arn:aws:ecr:fake:123456789012:repository/foo/bar:latest"
 	mediaType := ocispec.MediaTypeImageManifest
 
 	fakeClient := &fakeECRClient{
@@ -202,18 +198,16 @@ func TestFetchManifestNotFound(t *testing.T) {
 	}
 	resolver := &ecrResolver{
 		clients: map[string]ecrAPI{
-			"fake": fakeClient,
+			testdata.FakeRegion: fakeClient,
 		},
 	}
-	fetcher, err := resolver.Fetcher(context.Background(), ref)
+	fetcher, err := resolver.Fetcher(context.Background(), testdata.FakeRef+"@"+testdata.ImageDigest.String())
 	require.NoError(t, err, "failed to create fetcher")
 	_, err = fetcher.Fetch(context.Background(), ocispec.Descriptor{MediaType: mediaType})
 	assert.Error(t, err)
 }
 
 func TestFetchLayer(t *testing.T) {
-	registry := "registry"
-	repository := "repository"
 	layerDigest := testdata.LayerDigest.String()
 	fakeClient := &fakeECRClient{}
 	fetcher := &ecrFetcher{
@@ -221,9 +215,9 @@ func TestFetchLayer(t *testing.T) {
 			client: fakeClient,
 			ecrSpec: ECRSpec{
 				arn: arn.ARN{
-					AccountID: registry,
+					AccountID: testdata.FakeAccountID,
 				},
-				Repository: repository,
+				Repository: testdata.FakeRepository,
 			},
 		},
 	}
@@ -246,15 +240,16 @@ func TestFetchLayer(t *testing.T) {
 			callCount := 0
 			fakeClient.GetDownloadUrlForLayerFn = func(_ aws.Context, input *ecr.GetDownloadUrlForLayerInput, _ ...request.Option) (*ecr.GetDownloadUrlForLayerOutput, error) {
 				callCount++
-				assert.Equal(t, registry, aws.StringValue(input.RegistryId))
-				assert.Equal(t, repository, aws.StringValue(input.RepositoryName))
+				assert.Equal(t, testdata.FakeRegistryID, aws.StringValue(input.RegistryId))
+				assert.Equal(t, testdata.FakeRepository, aws.StringValue(input.RepositoryName))
 				assert.Equal(t, layerDigest, aws.StringValue(input.LayerDigest))
 				return &ecr.GetDownloadUrlForLayerOutput{DownloadUrl: aws.String(ts.URL)}, nil
 			}
 			desc := ocispec.Descriptor{
 				MediaType: mediaType,
-				Digest:    digest.Digest(layerDigest),
+				Digest:    testdata.ImageDigest,
 			}
+
 			reader, err := fetcher.Fetch(context.Background(), desc)
 			assert.NoError(t, err, "fetch")
 			defer reader.Close()
@@ -285,8 +280,6 @@ func TestFetchLayerAPIError(t *testing.T) {
 }
 
 func TestFetchLayerHtcat(t *testing.T) {
-	registry := "registry"
-	repository := "repository"
 	layerDigest := testdata.LayerDigest.String()
 	fakeClient := &fakeECRClient{}
 	fetcher := &ecrFetcher{
@@ -294,9 +287,9 @@ func TestFetchLayerHtcat(t *testing.T) {
 			client: fakeClient,
 			ecrSpec: ECRSpec{
 				arn: arn.ARN{
-					AccountID: registry,
+					AccountID: testdata.FakeAccountID,
 				},
-				Repository: repository,
+				Repository: testdata.FakeRepository,
 			},
 		},
 		parallelism: 2,
@@ -307,7 +300,9 @@ func TestFetchLayerHtcat(t *testing.T) {
 		mB = 1024 * kB
 	)
 	expectedBody := make([]byte, 30*mB)
-	rand.Read(expectedBody)
+	_, err := rand.Read(expectedBody)
+	require.NoError(t, err)
+
 	handlerCallCount := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handlerCallCount++
@@ -318,15 +313,17 @@ func TestFetchLayerHtcat(t *testing.T) {
 	downloadURLCallCount := 0
 	fakeClient.GetDownloadUrlForLayerFn = func(_ aws.Context, input *ecr.GetDownloadUrlForLayerInput, _ ...request.Option) (*ecr.GetDownloadUrlForLayerOutput, error) {
 		downloadURLCallCount++
-		assert.Equal(t, registry, aws.StringValue(input.RegistryId))
-		assert.Equal(t, repository, aws.StringValue(input.RepositoryName))
+		assert.Equal(t, testdata.FakeRegistryID, aws.StringValue(input.RegistryId))
+		assert.Equal(t, testdata.FakeRepository, aws.StringValue(input.RepositoryName))
 		assert.Equal(t, layerDigest, aws.StringValue(input.LayerDigest))
 		return &ecr.GetDownloadUrlForLayerOutput{DownloadUrl: aws.String(ts.URL)}, nil
 	}
+
 	desc := ocispec.Descriptor{
 		MediaType: images.MediaTypeDockerSchema2Layer,
 		Digest:    digest.Digest(layerDigest),
 	}
+
 	reader, err := fetcher.Fetch(context.Background(), desc)
 	assert.NoError(t, err, "fetch")
 	defer reader.Close()

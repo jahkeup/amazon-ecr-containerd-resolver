@@ -25,8 +25,6 @@ import (
 	"github.com/aws/aws-sdk-go/awstesting/unit"
 	"github.com/aws/aws-sdk-go/service/ecr"
 	"github.com/containerd/containerd/reference"
-	"github.com/opencontainers/go-digest"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/awslabs/amazon-ecr-containerd-resolver/ecr/internal/testdata"
@@ -54,56 +52,42 @@ func TestParseImageManifestMediaType(t *testing.T) {
 }
 
 func TestResolve(t *testing.T) {
-	// input
-	expectedRef := "ecr.aws/arn:aws:ecr:fake:123456789012:repository/foo/bar:latest"
-
-	// expected API arguments
-	expectedRegistryID := "123456789012"
-	expectedRepository := "foo/bar"
-	expectedImageTag := "latest"
+	// Test data
+	resolveRef := testdata.FakeRef
+	resolveManifest := testdata.OCIImageIndex
 
 	// API output
-	imageDigest := testdata.ImageDigest.String()
-	imageManifest := `{"schemaVersion": 2, "mediaType": "application/vnd.oci.image.manifest.v1+json"}`
 	image := &ecr.Image{
-		RepositoryName: aws.String(expectedRepository),
+		RepositoryName: aws.String(testdata.FakeRepository),
 		ImageId: &ecr.ImageIdentifier{
-			ImageDigest: aws.String(imageDigest),
+			ImageDigest: aws.String(resolveManifest.Digest().String()),
 		},
-		ImageManifest: aws.String(imageManifest),
-	}
-
-	// expected output
-	expectedDesc := ocispec.Descriptor{
-		Digest:    digest.Digest(imageDigest),
-		MediaType: ocispec.MediaTypeImageManifest,
-		Size:      int64(len(imageManifest)),
+		ImageManifest: aws.String(resolveManifest.Content()),
 	}
 
 	fakeClient := &fakeECRClient{
 		BatchGetImageFn: func(ctx aws.Context, input *ecr.BatchGetImageInput, opts ...request.Option) (*ecr.BatchGetImageOutput, error) {
-			assert.Equal(t, expectedRegistryID, aws.StringValue(input.RegistryId))
-			assert.Equal(t, expectedRepository, aws.StringValue(input.RepositoryName))
-			assert.Equal(t, []*ecr.ImageIdentifier{{ImageTag: aws.String(expectedImageTag)}}, input.ImageIds)
+			assert.Equal(t, testdata.FakeRegistryID, aws.StringValue(input.RegistryId))
+			assert.Equal(t, testdata.FakeRepository, aws.StringValue(input.RepositoryName))
+			assert.Equal(t, []*ecr.ImageIdentifier{{ImageTag: aws.String(testdata.FakeImageTag)}}, input.ImageIds)
 			return &ecr.BatchGetImageOutput{Images: []*ecr.Image{image}}, nil
 		},
 	}
+
 	resolver := &ecrResolver{
 		clients: map[string]ecrAPI{
-			"fake": fakeClient,
+			testdata.FakeRegion: fakeClient,
 		},
 	}
 
-	ref, desc, err := resolver.Resolve(context.Background(), expectedRef)
+	t.Logf("resolving ref: %q", resolveRef)
+	ref, desc, err := resolver.Resolve(context.Background(), resolveRef)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedRef, ref)
-	assert.Equal(t, expectedDesc, desc)
+	assert.Equal(t, resolveRef, ref)
+	assert.Equal(t, resolveManifest.Descriptor(), desc)
 }
 
 func TestResolveError(t *testing.T) {
-	// input
-	ref := "ecr.aws/arn:aws:ecr:fake:123456789012:repository/foo/bar:latest"
-
 	// expected output
 	expectedError := errors.New("expected")
 
@@ -114,17 +98,17 @@ func TestResolveError(t *testing.T) {
 	}
 	resolver := &ecrResolver{
 		clients: map[string]ecrAPI{
-			"fake": fakeClient,
+			testdata.FakeRegion: fakeClient,
 		},
 	}
-	_, _, err := resolver.Resolve(context.Background(), ref)
+
+	ref, desc, err := resolver.Resolve(context.Background(), testdata.FakeRef)
 	assert.EqualError(t, err, expectedError.Error())
+	assert.Empty(t, ref)
+	assert.Empty(t, desc)
 }
 
 func TestResolveNoResult(t *testing.T) {
-	// input
-	ref := "ecr.aws/arn:aws:ecr:fake:123456789012:repository/foo/bar:latest"
-
 	fakeClient := &fakeECRClient{
 		BatchGetImageFn: func(aws.Context, *ecr.BatchGetImageInput, ...request.Option) (*ecr.BatchGetImageOutput, error) {
 			return &ecr.BatchGetImageOutput{}, nil
@@ -132,17 +116,20 @@ func TestResolveNoResult(t *testing.T) {
 	}
 	resolver := &ecrResolver{
 		clients: map[string]ecrAPI{
-			"fake": fakeClient,
+			testdata.FakeRegion: fakeClient,
 		},
 	}
-	_, _, err := resolver.Resolve(context.Background(), ref)
+
+	ref, desc, err := resolver.Resolve(context.Background(), testdata.FakeRef)
 	assert.Error(t, err)
 	assert.Equal(t, reference.ErrInvalid, err)
+	assert.Empty(t, ref)
+	assert.Empty(t, desc)
 }
 
 func TestResolvePusherDenyDigest(t *testing.T) {
 	for _, ref := range []string{
-		"ecr.aws/arn:aws:ecr:fake:123456789012:repository/foo/bar@" + testdata.ImageDigest.String(),
+		testdata.FakeRefWithObject("@" + testdata.ImageDigest.String()),
 	} {
 		t.Run(ref, func(t *testing.T) {
 			resolver := &ecrResolver{}
@@ -151,12 +138,11 @@ func TestResolvePusherDenyDigest(t *testing.T) {
 			assert.Nil(t, p)
 		})
 	}
-
 }
 
 func TestResolvePusherAllowTagDigest(t *testing.T) {
 	for _, ref := range []string{
-		"ecr.aws/arn:aws:ecr:fake:123456789012:repository/foo/bar:with-tag-and-digest@" + testdata.ImageDigest.String(),
+		testdata.FakeRefWithObject(":tag-and-digest@" + testdata.ImageDigest.String()),
 	} {
 		t.Run(ref, func(t *testing.T) {
 			resolver := &ecrResolver{
@@ -169,5 +155,4 @@ func TestResolvePusherAllowTagDigest(t *testing.T) {
 			assert.NotNil(t, p)
 		})
 	}
-
 }
