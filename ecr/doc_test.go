@@ -31,8 +31,7 @@ func ExampleNewResolver_pull() {
 		namespaces.NamespaceFromEnv(context.TODO()),
 		"ecr.aws/arn:aws:ecr:us-west-2:123456789012:repository/myrepository:mytag",
 		containerd.WithResolver(resolver),
-		containerd.WithPullUnpack,
-		containerd.WithSchema1Conversion)
+		containerd.WithPullUnpack)
 	fmt.Println(img.Name())
 }
 

@@ -14,17 +14,18 @@ Registry API.
 ## Usage
 
 ### Pull images
+
 ```go
 resolver, _ := ecr.NewResolver()
 img, err := client.Pull(
     namespaces.NamespaceFromEnv(context.TODO()),
     "ecr.aws/arn:aws:ecr:us-west-2:123456789012:repository/myrepository:mytag",
     containerd.WithResolver(resolver),
-    containerd.WithPullUnpack,
-    containerd.WithSchema1Conversion)
+    containerd.WithPullUnpack)
 ```
 
 ### Push images
+
 ```go
 ctx := namespaces.NamespaceFromEnv(context.TODO())
 

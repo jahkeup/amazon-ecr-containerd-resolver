@@ -35,7 +35,6 @@ var (
 
 	// supportedImageMediaTypes lists supported content types for images.
 	supportedImageMediaTypes = []string{
-		images.MediaTypeDockerSchema1Manifest,
 		images.MediaTypeDockerSchema2Manifest,
 		images.MediaTypeDockerSchema2ManifestList,
 		ocispec.MediaTypeImageIndex,
