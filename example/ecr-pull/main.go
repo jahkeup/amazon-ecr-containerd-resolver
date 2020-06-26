@@ -67,9 +67,7 @@ func main() {
 	}()
 
 	h := images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-		if desc.MediaType != images.MediaTypeDockerSchema1Manifest {
-			ongoing.add(desc)
-		}
+		ongoing.add(desc)
 		return nil, nil
 	})
 
@@ -81,8 +79,7 @@ func main() {
 	log.G(ctx).WithField("ref", ref).Info("Pulling from Amazon ECR")
 	img, err := client.Pull(ctx, ref,
 		containerd.WithResolver(resolver),
-		containerd.WithImageHandler(h),
-		containerd.WithSchema1Conversion)
+		containerd.WithImageHandler(h))
 	stopProgress()
 	if err != nil {
 		log.G(ctx).WithError(err).WithField("ref", ref).Fatal("Failed to pull")
