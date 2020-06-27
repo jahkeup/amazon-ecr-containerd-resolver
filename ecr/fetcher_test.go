@@ -102,12 +102,9 @@ func TestFetchForeignLayerNotFound(t *testing.T) {
 }
 
 func TestFetchManifest(t *testing.T) {
-	const (
-		imageManifest  = "image manifest"
-		imageDigest    = "sha256:18019fb68413973fcde9ff917d333bbaa228c4aaebba9ad0ca5ffec26e4f3541"
-		imageTag       = "tag"
-		imageTagDigest = "tag@" + imageDigest
-	)
+	imageManifest := `{"schemaVersion": 0}`      // content is unimportant.
+	imageDigest := testdata.ImageDigest.String() // digest is unimportant.
+	imageTag := testdata.FakeImageTag
 
 	// Test all supported media types
 	for _, mediaType := range supportedImageMediaTypes {
@@ -119,7 +116,7 @@ func TestFetchManifest(t *testing.T) {
 			// Tag alone - used on first get image.
 			{Object: imageTag, ImageIdentifier: ecr.ImageIdentifier{ImageTag: aws.String(imageTag)}},
 			// Tag and digest assertive fetch
-			{Object: imageTagDigest, ImageIdentifier: ecr.ImageIdentifier{ImageTag: aws.String(imageTag), ImageDigest: aws.String(imageDigest)}},
+			{Object: imageTag + "@" + imageDigest, ImageIdentifier: ecr.ImageIdentifier{ImageTag: aws.String(imageTag), ImageDigest: aws.String(imageDigest)}},
 			// Digest fetch
 			{Object: "@" + imageDigest, ImageIdentifier: ecr.ImageIdentifier{ImageDigest: aws.String(imageDigest)}},
 		} {
@@ -208,7 +205,6 @@ func TestFetchManifestNotFound(t *testing.T) {
 }
 
 func TestFetchLayer(t *testing.T) {
-	layerDigest := testdata.LayerDigest.String()
 	fakeClient := &fakeECRClient{}
 	fetcher := &ecrFetcher{
 		ecrBase: ecrBase{
@@ -229,12 +225,12 @@ func TestFetchLayer(t *testing.T) {
 
 	// test all supported media types
 	for _, mediaType := range []string{
+		images.MediaTypeDockerSchema2Config,
 		images.MediaTypeDockerSchema2Layer,
 		images.MediaTypeDockerSchema2LayerGzip,
-		images.MediaTypeDockerSchema2Config,
-		ocispec.MediaTypeImageLayerGzip,
-		ocispec.MediaTypeImageLayer,
 		ocispec.MediaTypeImageConfig,
+		ocispec.MediaTypeImageLayer,
+		ocispec.MediaTypeImageLayerGzip,
 	} {
 		t.Run(mediaType, func(t *testing.T) {
 			callCount := 0
@@ -242,12 +238,10 @@ func TestFetchLayer(t *testing.T) {
 				callCount++
 				assert.Equal(t, testdata.FakeRegistryID, aws.StringValue(input.RegistryId))
 				assert.Equal(t, testdata.FakeRepository, aws.StringValue(input.RepositoryName))
-				assert.Equal(t, layerDigest, aws.StringValue(input.LayerDigest))
 				return &ecr.GetDownloadUrlForLayerOutput{DownloadUrl: aws.String(ts.URL)}, nil
 			}
 			desc := ocispec.Descriptor{
 				MediaType: mediaType,
-				Digest:    testdata.ImageDigest,
 			}
 
 			reader, err := fetcher.Fetch(context.Background(), desc)
@@ -280,7 +274,6 @@ func TestFetchLayerAPIError(t *testing.T) {
 }
 
 func TestFetchLayerHtcat(t *testing.T) {
-	layerDigest := testdata.LayerDigest.String()
 	fakeClient := &fakeECRClient{}
 	fetcher := &ecrFetcher{
 		ecrBase: ecrBase{
@@ -315,21 +308,21 @@ func TestFetchLayerHtcat(t *testing.T) {
 		downloadURLCallCount++
 		assert.Equal(t, testdata.FakeRegistryID, aws.StringValue(input.RegistryId))
 		assert.Equal(t, testdata.FakeRepository, aws.StringValue(input.RepositoryName))
-		assert.Equal(t, layerDigest, aws.StringValue(input.LayerDigest))
 		return &ecr.GetDownloadUrlForLayerOutput{DownloadUrl: aws.String(ts.URL)}, nil
 	}
 
-	desc := ocispec.Descriptor{
-		MediaType: images.MediaTypeDockerSchema2Layer,
-		Digest:    digest.Digest(layerDigest),
-	}
-
-	reader, err := fetcher.Fetch(context.Background(), desc)
-	assert.NoError(t, err, "fetch")
-	defer reader.Close()
+	reader, err := fetcher.Fetch(context.Background(), ocispec.Descriptor{
+		// testing code path choice, mediaType is unimportant.
+		MediaType: images.MediaTypeDockerSchema2LayerGzip,
+	})
 	assert.Equal(t, 1, downloadURLCallCount, "GetDownloadURLForLayer should be called once")
-	body, err := ioutil.ReadAll(reader)
-	assert.NoError(t, err, "reading body")
-	assert.Equal(t, expectedBody, body)
+	if assert.NoError(t, err, "fetch") {
+		defer reader.Close()
+	}
+	if assert.NotNil(t, reader, "no reader") {
+		body, err := ioutil.ReadAll(reader)
+		assert.NoError(t, err, "reading body")
+		assert.Equal(t, expectedBody, body)
+	}
 	assert.True(t, handlerCallCount > 1, "ServeContent should be called more than once: %d", handlerCallCount)
 }
