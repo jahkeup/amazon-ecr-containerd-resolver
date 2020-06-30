@@ -45,9 +45,6 @@ func TestParseImageManifestMediaType(t *testing.T) {
 		t.Run(sample.MediaType(), func(t *testing.T) {
 			t.Logf("content: %s", sample.Content())
 			actual := parseImageManifestMediaType(context.Background(), sample.Content())
-			if sample.MediaType() != "" {
-				assert.NotEmpty(t, actual)
-			}
 			assert.Equal(t, sample.MediaType(), actual)
 		})
 	}
