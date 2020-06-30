@@ -206,16 +206,26 @@ func (r *ecrResolver) getClient(region string) ecrAPI {
 // manifestProbe provides a structure to parse and then probe a given manifest
 // to determine its mediaType.
 type manifestProbe struct {
-	SchemaVersion int64  `json:"schemaVersion"`
-	MediaType     string `json:"mediaType,omitempty"`
-	// Docker Schema 1
+	// SchemaVersion is version identifier for the manifest schema used.
+	SchemaVersion int64 `json:"schemaVersion"`
+	// Explicit MediaType assignment for the manifest.
+	MediaType string `json:"mediaType,omitempty"`
+	// Docker Schema 1 signatures.
 	Signatures json.RawMessage `json:"signatures,omitempty"`
-	// OCI or Docker Manifest Lists
+	// OCI or Docker Manifest Lists, the list of descriptors has mediaTypes
+	// embedded.
 	Manifests []ocispec.Descriptor `json:"manifests,omitempty"`
+	// Config is the Image Config descriptor which provides the targeted
+	// mediaType.
+	Config ocispec.Descriptor `json:"config,omitempty"`
 }
 
 // TODO: make this error and handle in caller.
 func parseImageManifestMediaType(ctx context.Context, body string) string {
+	// The mediaType specified for the unsigned variant of the Docker v2 Schema
+	// 1 manifest.
+	const mediaTypeDockerSchema1ManifestUnsigned = "application/vnd.docker.distribution.manifest.v1+json"
+
 	var manifest manifestProbe
 	err := json.Unmarshal([]byte(body), &manifest)
 	if err != nil {
@@ -225,27 +235,47 @@ func parseImageManifestMediaType(ctx context.Context, body string) string {
 		return images.MediaTypeDockerSchema2Manifest
 	}
 
-	if manifest.SchemaVersion == 1 {
-		if manifest.MediaType != "" {
-			return manifest.MediaType
-		}
-		if len(manifest.Signatures) == 0 {
-			return "application/vnd.docker.distribution.manifest.v1+json"
-		}
-		return images.MediaTypeDockerSchema1Manifest
+	// Defer to the manifest declared type.
+	if manifest.MediaType != "" {
+		return manifest.MediaType
 	}
 
-	if manifest.SchemaVersion == 2 {
-		if manifest.MediaType != "" {
-			return manifest.MediaType
+	switch manifest.SchemaVersion {
+	case 2:
+		switch manifest.Config.MediaType {
+		case images.MediaTypeDockerSchema2Config:
+			return images.MediaTypeDockerSchema2Manifest
+		case ocispec.MediaTypeImageConfig:
+			return ocispec.MediaTypeImageManifest
 		}
-		// OCI Image Index - matching an empty mediaType and array of manifests.
-		// The mediaType is defined as OPTIONAL in the image-spec, but is
-		// currently required to be provided for ECR.
-		if len(manifest.Manifests) > 0 {
-			return ocispec.MediaTypeImageIndex
+
+		// This is a single image manifest, prefer to "cast" to an OCI image
+		// media type.
+		if len(manifest.Manifests) == 0 {
+			return ocispec.MediaTypeImageManifest
 		}
-		return ocispec.MediaTypeImageManifest
+
+		// Parse mediaType based on elements, docker manifests are generally
+		// pushed by docker.
+		for _, elm := range manifest.Manifests {
+			switch elm.MediaType {
+			case ocispec.MediaTypeImageManifest:
+				return ocispec.MediaTypeImageIndex
+			case images.MediaTypeDockerSchema2Manifest:
+				return images.MediaTypeDockerSchema2ManifestList
+			}
+		}
+
+		// Otherwise, this may be an OCI Index containing unhandled mediaTypes
+		// for other uses.
+		return ocispec.MediaTypeImageIndex
+
+	case 1:
+		// Signed Docker Schema 1
+		if len(manifest.Signatures) != 0 {
+			return images.MediaTypeDockerSchema1Manifest
+		}
+		return mediaTypeDockerSchema1ManifestUnsigned
 	}
 
 	return ""
