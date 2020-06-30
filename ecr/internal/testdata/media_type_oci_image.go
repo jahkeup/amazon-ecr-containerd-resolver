@@ -32,7 +32,7 @@ var OCIImageIndex = MediaTypeSample{
   "schemaVersion": 2,
   "manifests": [
     {
-      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
       "size": 3231,
       "digest": "sha256:babb154b919b9ad7d38786f71f9c8a3614f6d017b0ba7cada4801ceed7b2220d",
       "platform": {
@@ -41,7 +41,7 @@ var OCIImageIndex = MediaTypeSample{
       }
     },
     {
-      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
       "size": 3231,
       "digest": "sha256:718441d735e6a7c9b24837c779cc7112995289eff976a308695a1936bc20b67b",
       "platform": {
